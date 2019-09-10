@@ -1,0 +1,109 @@
+cephfs
+
+$ ceph-deploy mds create tg-ops-sz003  #这里只安装了 tg-ops-sz003 节点
+
+[tg-ops-sz003][INFO  ] Running command: sudo systemctl enable ceph-mds@tg-ops-sz003
+[tg-ops-sz003][INFO  ] Running command: sudo systemctl start ceph-mds@tg-ops-sz003
+[tg-ops-sz003][INFO  ] Running command: sudo systemctl enable ceph.target
+
+create two pools with default settings for use with a filesystem, you might run the following commands:
+
+[cehper@tg-ops-sz001 my-cluster]$ ceph osd pool create fs_data 20
+pool 'fs_data' created
+[cehper@tg-ops-sz001 my-cluster]$ ceph osd pool create fs_metadata 20
+pool 'fs_metadata' created
+
+
+CREATING A FILESYSTEM
+
+[cehper@tg-ops-sz001 my-cluster]$ ceph fs new cephfs fs_metadata fs_data
+new fs with metadata pool 27 and data pool 26
+
+$ ceph mds stat
+cephfs-1/1/1 up  {0=tg-ops-sz002=up:active}, 2 up:standby
+
+$ ceph fs ls
+name: cephfs, metadata pool: fs_metadata, data pools: [fs_data ]
+
+创建用户：
+
+[cehper@tg-ops-sz001 my-cluster]$ ceph auth get-or-create client.cephfs mon 'allow r' mds 'allow r, allow rw path=/' osd 'allow rw pool=fs_data' -o ceph.client.cephfs.keyring
+[cehper@tg-ops-sz001 my-cluster]$ cat ceph.client.cephfs.keyring
+[client.cephfs]
+	key = AQDrNkldB1YEDBAAsdXnyryyftwuGmudd8JIcw==
+
+
+client:
+
+# ceph auth get-key client.cephfs
+AQDrNkldB1YEDBAAsdXnyryyftwuGmudd8JIcw==
+
+[root@tg-ops-sz004 ~]# mount -t ceph tg-ops-sz003:6789:/ /fs -o name=cephfs,secret=AQDrNkldB1YEDBAAsdXnyryyftwuGmudd8JIcw==   # name=cephfs 对应于上面创建的用户名
+
+[root@tg-ops-sz004 ~]# df -h /fs
+文件系统              容量  已用  可用 已用% 挂载点
+172.31.217.44:6789:/   12G     0   12G    0% /fs
+
+
+指定key文件
+
+
+cat /etc/ceph/cephfskey
+AQDrNkldB1YEDBAAsdXnyryyftwuGmudd8JIcw==
+
+# mount -t ceph tg-ops-sz003:/ /fs -o name=cephfs,secretfile=/etc/ceph/cephfskey
+
+# df -h /fs
+文件系统         容量  已用  可用 已用% 挂载点
+172.31.217.44:/   12G     0   12G    0% /fs
+
+
+开机自启：
+
+
+[root@tg-ops-sz004 ~]# cat /etc/fstab
+UUID=ed95c595-4813-480e-992b-85b1347842e8 /                       ext4    defaults        1 1
+#/dev/vdb	/nfs	xfs	defaults	1 1
+#/dev/rbd0	/rbd	xfs	defaults        1 1
+tg-ops-sz003:6789:/ /fs	ceph	name=cephfs,secretfile=/etc/ceph/cephfskey,_netdev,noatime 0 0
+
+
+ceph-fuse 用法：
+
+[root@tg-ops-sz004 ~]# yum list|grep ceph-fuse
+ceph-fuse.x86_64                        2:13.2.6-0.el7                 Ceph
+[root@tg-ops-sz004 ~]# yum install ceph-fuse -y
+
+
+[root@tg-ops-sz004 ~]# ceph-fuse --keyring /etc/ceph/ceph.client.cephfs.keyring --name client.cephfs -m tg-ops-sz003:6789 /fs
+ceph-fuse[2796414]: starting ceph client
+2019-08-06 16:37:24.489 7f17c0b1dc00 -1 init, newargv = 0x55d9883f3bc0 newargc=7
+ceph-fuse[2796414]: starting fuse
+
+[root@tg-ops-sz004 ~]# df -h /fs/
+文件系统        容量  已用  可用 已用% 挂载点
+ceph-fuse        12G     0   12G    0% /fs
+
+
+同上：
+
+# ceph-fuse --name client.cephfs -m tg-ops-sz003:6789 /fs    # 不需要指定keyring，可根据 --name client.cephfs 来查找
+
+开机启动：
+
+# cat /etc/fstab
+id=cephfs,keyring=/etc/ceph/ceph.client.cephfs.keyring /fs fuse.ceph defaults 0 0
+
+也可以这样写：
+
+none /fs fuse.ceph ceph.id=cephfs,_netdev,defaults 0 0   
+
+这里什么都没有指定，但是他是通过到 /etc/ceph/ceph.conf mon_host 来查找对应服务器
+
+mon_host = 172.31.217.45,172.31.217.43,172.31.217.44
+
+
+
+
+将cephfs 导出为nfs服务器
+

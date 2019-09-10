@@ -1,0 +1,80 @@
+groups:
+- name: node
+  rules:
+  - alert: InstanceDown
+    expr: up == 0
+    for: 20s
+    labels:
+      level: 1
+    annotations:
+      summary: "Job instance is down"
+      description: "Job {{ $labels.job }} instance {{ $labels.instance }} is down."
+  - alert: 系统负载1分钟内持续过高
+    expr: node_load1 > 1
+    for: 2m
+    labels:
+      level: 1
+    annotations:
+      summary: "系统负载为 {{ $value }}"
+  - alert: 系统负载5分钟内持续过高
+    expr: node_load5 > 1
+    for: 2m
+    labels:
+      level: 1
+    annotations:
+      summary: "系统负载为 {{ $value }}"
+  - alert: 系统负载15分钟内持续过高
+    expr: node_load15 > 1
+    for: 2m
+    labels:
+      level: 1
+    annotations:
+      summary: "系统负载为 {{ $value }}"
+  - alert: iowait
+    expr: avg(irate(node_cpu_seconds_total{mode="iowait"}[5m])) by (instance) * 100 > 50
+    for: 1m
+    labels:
+      level: 1
+    annotations:
+      summary: iowait More than 50%
+      description: "Node {{ $labels.instance }} iowait More than 50%"
+  - alert: NodeFilesystemUsage-high
+    expr: (1-  (node_filesystem_free_bytes{fstype=~"ext3|ext4|xfs"} / node_filesystem_size_bytes{fstype=~"ext3|ext4|xfs"}) ) * 100 > 80
+    for: 2m
+    labels:
+        severity: warning
+    annotations:
+      summary: "{{$labels.instance}}: High Node Filesystem usage detected"
+      description: "{{$labels.instance}}: Node Filesystem usage is above 80% ,(current value is: {{ $value }})"
+  - alert: NodeMemoryUsage
+    expr: (100 - (((node_memory_MemFree_bytes+node_memory_Buffers_bytes+node_memory_Cached_bytes)/node_memory_MemTotal_bytes) * 100))  > 80
+    for: 2m
+    labels:
+      severity: warning
+    annotations:
+      summary: "{{$labels.instance}}: High Node Memory usage detected"
+      description: "{{$labels.instance}}: Node Memory usage is above 80% ,(current value is: {{ $value }})"
+  - alert: NodeCPUUsage
+    expr: (100 - (avg by (instance)(irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100))  > 80
+    for: 2m
+    labels:
+      severity: warning
+    annotations:
+      summary: "{{$labels.instance}}: Node High CPU usage detected"
+      description: "{{$labels.instance}}: Node CPU usage is above 80% ,(current value is: {{ $value }})"
+
+  - alert: NetworkingIn
+    expr: irate(node_network_receive_bytes_total{device!~'tap.*|veth.*|br.*|docker.*|virbr*|lo*'}[5m]) / 1024 / 1024 > 10
+    labels:
+      severity: warning
+    annotations:
+      summary: "{{$labels.instance}}: Networking In More than 10M"
+      description: "{{$labels.instance}}: Networking In: (current value is: {{ $value }}M)"
+    
+  - alert: NetworkingOut
+    expr: irate(node_network_transmit_bytes_total{device!~'tap.*|veth.*|br.*|docker.*|virbr*|lo*'}[5m]) / 1024 / 1024 > 10
+    labels:
+      severity: warning
+    annotations:
+      summary: "{{$labels.instance}}: Networking Out More than 10M"
+      description: "{{$labels.instance}}: Networking Out: (current value is: {{ $value }}M)"

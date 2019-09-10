@@ -1,0 +1,35 @@
+groups:
+- name: Containers
+  rules:
+  - alert: ContainerMemUsage
+    expr: container_memory_usage_bytes{container_name!=""} / container_spec_memory_limit_bytes{container_name!=""}  *100 != +Inf > 80
+    for: 2m
+    labels:
+      severity: warning
+    annotations:
+      summary: "{{$labels.name}}: Pod High Mem usage detected"
+      description: "{{$labels.name}}: Pod Mem is above 80% ,(current value is: {{ $value }})"
+  - alert: ContainerCpuUsage
+    expr: sum by (name) (rate(container_cpu_user_seconds_total{name!=""}[2m])) * 100 > 60
+    for: 2m
+    labels:
+      severity: warning
+    annotations:
+      summary: "{{$labels.name}}: Pod High CPU usage detected"
+      description: "{{$labels.name}}: Pod CPU is above 60% ,(current value is: {{ $value }})"
+  - alert: ContainerNetworkingIn
+    expr: irate(container_network_receive_bytes_total{image!=""}[1m]) /1024 /1024 > 10
+    for: 1m
+    labels:
+      severity: warning
+    annotations:
+      summary: "{{$labels.name}}: Pod NetworkingIn More than 10M"
+      description: "{{$labels.name}}: NetworkingIn More than 10M ,(current value is: {{ $value }})"
+  - alert: ContainerNetworkingOut
+    expr: irate(container_network_transmit_bytes_total{image!=""}[1m]) /1024 / 1024 > 10
+    for: 1m
+    labels:
+      severity: warning
+    annotations:
+      summary: "{{$labels.name}}: Pod NetworkingOut More than 10M"
+      description: "{{$labels.name}}: NetworkingOut More than 10M ,(current value is: {{ $value }})"

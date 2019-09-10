@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-yaml-file
+data:
+  cm-yaml-file: |
+    172.31.217.45       tg-ops-sz001    tg-ops-sz001
+    172.31.217.45 tg-ops-sz001.tgops.com
+    172.31.217.43 tg-ops-sz002.tgops.com
+    172.31.217.44 tg-ops-sz003.tgops.com

@@ -1,0 +1,24 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: deploy-nginx
+  labels:
+    app: deploy-demo
+spec:
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: deploy-demo
+    spec:
+      containers:
+      - name: deploy-nginx
+        image: nginx:1.15
+        ports:
+        - containerPort: 80
+  minReadySeconds: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1

@@ -1,0 +1,5 @@
+kubectl get secret dashboard-admin-token-t7lbf -n kube-system -o jsonpath={.data.token} -n kube-system |base64 -d
+
+https://github.com/cnych
+
+https://www.jianshu.com/p/983f2f226579

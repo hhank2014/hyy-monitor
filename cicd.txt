@@ -1,0 +1,131 @@
+# hyy-monitor
+
+node {
+    
+    stage('Clone') {
+        echo "1.Clone Stage"
+        git credentialsId: '3974efa6-80bc-4632-a694-7865d0c72eb0', url: 'https://github.com/cnych/jenkins-demo.git'
+    }
+    stage('Build') {
+        echo "3.Build Docker Image Stage"
+        sh "sudo /usr/bin/docker build -t d12d123d/k8s-test:${build_tag} ."
+    }
+    stage('Push') {
+        echo "4.Push Docker Image Stage"
+        withCredentials([usernamePassword(credentialsId: 'ddafb916-a93a-42a4-8458-0caa6650dc10', passwordVariable: 'dockerHubPassword', usernameVariable: 'dockerHubUser')]) {
+            sh "sudo docker login -u ${dockerHubUser} -p ${dockerHubPassword}"
+            sh "sudo docker push d12d123d/k8s-test:${build_tag}"
+        }
+    }
+    stage('YAML') {
+        echo "5. Change YAML File Stage"
+        sh "sed -i 's/<BUILD_TAG>/${build_tag}/' k8s.yaml"
+        sh "sed -i 's/<BRANCH_NAME>/${env.BRANCH_NAME}/' k8s.yaml"
+    }
+    stage('Deploy') {
+        echo "6. Deploy Stage"
+        sh "sudo kubectl apply -f k8s.yaml"
+    }
+}
+
+V2. 新增人工确认功能
+
+node {
+    
+    stage('Clone') {
+        echo "1.Clone Stage"
+        git credentialsId: '3974efa6-80bc-4632-a694-7865d0c72eb0', url: 'https://github.com/cnych/jenkins-demo.git'
+    }
+    stage('Build') {
+        echo "3.Build Docker Image Stage"
+        sh "sudo /usr/bin/docker build -t d12d123d/k8s-test:${build_tag} ."
+    }
+    stage('Push') {
+        echo "4.Push Docker Image Stage"
+        withCredentials([usernamePassword(credentialsId: 'ddafb916-a93a-42a4-8458-0caa6650dc10', passwordVariable: 'dockerHubPassword', usernameVariable: 'dockerHubUser')]) {
+            sh "sudo docker login -u ${dockerHubUser} -p ${dockerHubPassword}"
+            sh "sudo docker push d12d123d/k8s-test:${build_tag}"
+        }
+    }
+    // stage('YAML') {
+    //     echo "5. Change YAML File Stage"
+    //     sh "sed -i 's/<BUILD_TAG>/${build_tag}/' k8s.yaml"
+    //     sh "sed -i 's/<BRANCH_NAME>/${env.BRANCH_NAME}/' k8s.yaml"
+    // }
+    // stage('Deploy') {
+    //     echo "6. Deploy Stage"
+    //     sh "sudo kubectl apply -f k8s.yaml"
+    // }
+    stage('Deploy') {
+        echo "5. Deploy Stage"
+        def userInput = input(
+            id: 'userInput',
+            message: 'Choose a deploy environment',
+            parameters: [
+                [
+                    $class: 'ChoiceParameterDefinition',
+                    choices: "Dev\nQA\nProd",
+                    name: 'Env'
+                ]
+            ]
+        )
+        echo "This is a deploy step to ${userInput}"
+        sh "sed -i 's/<BUILD_TAG>/${build_tag}/' k8s.yaml"
+        sh "sed -i 's/<BRANCH_NAME>/${env.BRANCH_NAME}/' k8s.yaml"
+        if (userInput == "Dev") {
+            // deploy dev stuff
+        } else if (userInput == "QA"){
+            // deploy qa stuff
+        } else {
+            // deploy prod stuff
+        }
+        sh "sudo kubectl apply -f k8s.yaml"
+    }
+}
+
+v3: 使用Jenkins + Jenkinsfile 
+
+node {
+    stage('Prepare') {
+        echo "1.Prepare Stage"
+        checkout scm
+        script {
+            build_tag = sh(returnStdout: true, script: 'git rev-parse --short HEAD').trim()
+            if (env.BRANCH_NAME != 'master') {
+                build_tag = "${env.BRANCH_NAME}-${build_tag}"
+            }
+        }
+    }
+    stage('Test') {
+      echo "2.Test Stage"
+    }
+    stage('Build') {
+        echo "3.Build Docker Image Stage"
+        sh "sudo docker build -t d12d123d/jenkins-demo:${build_tag} ."
+    }
+    stage('Push') {
+        echo "4.Push Docker Image Stage"
+        withCredentials([usernamePassword(credentialsId: 'ddafb916-a93a-42a4-8458-0caa6650dc10', passwordVariable: 'dockerHubPassword', usernameVariable: 'dockerHubUser')]) {
+            sh "sudo docker login -u ${dockerHubUser} -p ${dockerHubPassword}"
+            sh "sudo docker push d12d123d/jenkins-demo:${build_tag}"
+        }
+    }
+    stage('Deploy') {
+        echo "5. Deploy Stage"
+        def userInput = input(
+            id: 'userInput',
+            message: 'Choose a deploy environment',
+            parameters: [
+                [
+                    $class: 'ChoiceParameterDefinition',
+                    choices: "Deploy",
+                    name: 'Env'
+                ]
+            ]
+        )
+        sh "sed -i 's/<BUILD_TAG>/${build_tag}/' k8s.yaml"
+        sh "sed -i 's/<BRANCH_NAME>/${env.BRANCH_NAME}/' k8s.yaml"
+
+        sh "sudo kubectl apply -f k8s.yaml --record"
+    }
+}

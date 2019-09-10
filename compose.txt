@@ -1,0 +1,27 @@
+# hyy-monitor
+
+node {
+    
+    stage("devops") {
+        dir('devops') {
+            git credentialsId: '3974efa6-80bc-4632-a694-7865d0c72eb0', 
+                url: '${git_url}'
+        }
+    }
+    stage("deploy") {
+        
+        sh label: '', script: '''for i in $HOSTNAME
+        do
+                ssh 172.31.31.135 "
+                    sudo salt "web01" state.sls init -v
+                "
+                rsync -avzp --delete --partial devops/* ${i}:/data/www/devops
+                ssh ${i} "
+                    cd /data/www/devops
+                    cd nginx && sudo docker build -t  tg_os_nginx:1.16 . && cd ../
+                    cd php   && sudo docker build -t tg_os_php:70 .      && cd ../
+                    sudo docker-compose up --build -d
+                "
+        done'''
+    }
+}

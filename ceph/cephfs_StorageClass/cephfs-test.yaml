@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ceph-pv-secret-admin
+  namespace: kube-system
+data:
+  key: QVFCTy9tTmREdmljQ3hBQUNzanNWZncyY0tRR29QVzh3V1N0TkE9PQ==
+
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: cephfs-test
+  namespace: kube-system
+spec:
+  containers:
+  - name: cephfs-test
+    image: nginx
+    volumeMounts:
+    - mountPath: "/mnt/cephfs"
+      name: cephfs
+  volumes:
+  - name: cephfs
+    cephfs:
+      monitors:
+      - tg-ops-sz001:6789
+      - tg-ops-sz002:6789
+      - tg-ops-sz003:6789
+      - tg-ops-sz004:6789
+      user: "admin"
+      secretRef: 
+        name: ceph-pv-secret-admin

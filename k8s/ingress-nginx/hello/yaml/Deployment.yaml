@@ -1,0 +1,33 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: hello
+spec:
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        app: hello
+    spec:
+      containers:
+      - name: hello-nginx
+        image: harbor.tgops.cc/tgops/nginx:54
+        ports:
+        - containerPort: 80
+          name: hello
+        volumeMounts:
+        - name: hello
+          mountPath: /usr/share/nginx/html
+          readOnly: false
+      - name: hello-php
+        image: harbor.tgops.cc/tgops/php:54
+        volumeMounts:
+        - name: hello
+          mountPath: /usr/share/nginx/html
+          readOnly: false
+      volumes:
+      - name: hello
+        persistentVolumeClaim:
+          claimName: hello
+      imagePullSecrets:
+      - name: harbor-repo

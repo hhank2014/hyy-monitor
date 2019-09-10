@@ -1,0 +1,49 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: ingress-world
+  namespace: default
+  annotations: 
+    kubernetes.io/ingress.class: "nginx"
+spec:
+  tls:
+  - hosts:
+    - "world10.tgadmin.cc"
+    - "hello10.tgops.cc"
+    #secretName: tls-tgadmin-secret
+    secretName: tgops-tgadmin-tls
+  - hosts:
+    - "*.tgadmin.cc"
+    secretName: tls-tgadmin-secret
+  - hosts:
+    - "test.tgadmin.cc"
+    secretName: tls-tgadmin-secret
+  rules:
+  - host: "hello10.tgops.cc"
+    http:
+      paths:
+      - path:
+        backend:
+          serviceName: world
+          servicePort: 80
+  - host: "world10.tgadmin.cc"
+    http:
+      paths:
+      - path:
+        backend:
+          serviceName: world
+          servicePort: 80
+  - host: "*.tgadmin.cc"
+    http:
+      paths:
+      - path:
+        backend:
+          serviceName: world
+          servicePort: 80
+  - host: test.tgadmin.cc
+    http:
+      paths:
+      - path:
+        backend:
+          serviceName: hello
+          servicePort: 80

@@ -1,0 +1,9 @@
+piVersion: v1
+kind: Node
+metadata:
+  labels:
+    kubernetes.io/hostname: tg-ops-sz003.tgops.com
+  name: tg-ops-sz003.tgops.com
+spec:
+  podCIDR: 10.244.2.0/24
+  validate: false

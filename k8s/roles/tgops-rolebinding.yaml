@@ -1,0 +1,13 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: tgops-rolebinding
+  namespace: kube-system
+subjects:
+- kind: User
+  name: tgops
+  apiGroup: ""
+roleRef:
+  kind: Role
+  name: tgops-role
+  apiGroup: ""
