@@ -1,0 +1,49 @@
+node {
+    stage('Clone') {
+        echo "1.Clone Stage"
+        git credentialsId: '4-a51a-0333cdb44a47', url: 'http://50.227/r/ops-templates.git'
+    }
+    
+    stage('InitService'){
+
+        echo "4.Push Docker Image Stage"
+        withCredentials([usernamePassword(credentialsId: 'dockerHubUser', passwordVariable: 'dockerHubPassword', usernameVariable: 'dockerHubUser')]) {
+            sh '''
+            rm -rf ./${Service}
+            cp -r template ${Service}
+            cd ${Service}/nginx
+            docker login harbor.tgops.cc --username=${dockerHubUser} --password=${dockerHubPassword}
+            docker build -t ${ImageUrlNginx}:${BUILD_ID} .
+            docker push  ${ImageUrlNginx}:${BUILD_ID}
+            cd ../php
+            docker build -t ${ImageUrlPHP}:${BUILD_ID} .
+            docker push  ${ImageUrlPHP}:${BUILD_ID}
+            '''
+        }
+    }
+    
+    stage('YAML'){
+        sh '''
+        cp ${Service}/yaml/ingress-template ${Service}/yaml/ingress-${Service}.yaml
+        sed -i s/TAG_NAME/${Service}/g ./${Service}/yaml/*.yaml
+        sed -i s/TaintsEffect/${TaintsEffect}/g ./${Service}/yaml/mandatory.yaml
+        sed -i s/NODESLECTOR/${NODESLECTOR}/g ./${Service}/yaml/mandatory.yaml
+        sed -i s/TaintsValues/${NODESLECTOR}/ ./${Service}/yaml/mandatory.yaml
+        sed -i 's/IMAGE_NGINX/${ImageUrlNginx}/g' ./${Service}/yaml/Deployment.yaml
+        sed -i 's/IMAGE_PHP/${ImageUrlPHP}/g' ./${Service}/yaml/Deployment.yaml
+        sed -i s/VERSION/${BUILD_ID}/g ./${Service}/yaml/Deployment.yaml
+        '''
+    }
+    stage('Deploy') {
+        echo "5. Deploy Stage"
+
+    	sh '''
+            SSH="ssh  -oUserKnownHostsFile=/dev/null -oStrictHostKeyChecking=no"
+            User="root"
+            Hostname="tg-ops-sz001"
+            rsync -avzp --delete --partial --exclude=.git/ -e "${SSH}" $WORKSPACE/${Service}/* ${User}@${Hostname}:/data/jenkins-data/${JOB_NAME}/${Service}/
+    	    ${SSH} ${User}@${Hostname} sudo kubectl apply -f /data/jenkins-data/${JOB_NAME}/${Service}/yaml/mandatory.yaml --record
+    	    ${SSH} ${User}@${Hostname} sudo kubectl apply -f /data/jenkins-data/${JOB_NAME}/${Service}/yaml/ --record
+    	'''
+    }
+}
